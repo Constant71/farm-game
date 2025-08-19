@@ -39,7 +39,7 @@ crops = {
     "pumpkin": 0
          }
 
-player_name = input("Enter your name: ")
+
 
 
     
