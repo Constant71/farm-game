@@ -39,8 +39,7 @@ crops = {
     "pumpkin": 0
          }
 
-
-print("hello world")
+player_name = input("Enter your name: ")
 
 
     
