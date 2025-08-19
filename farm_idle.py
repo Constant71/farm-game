@@ -39,7 +39,26 @@ crops = {
     "pumpkin": 0
          }
 
+class Plot:
+    def __init__(self, crop_type):
+        self.crop_type = crop_type
+        self.growth_stage = 0
+        self.harvested = False
 
+    def grow(self):
+        if not self.harvested:
+            self.growth_stage += 1
+            if self.growth_stage >= 5:  # Assuming 5 stages to fully grow
+                self.harvested = True
+
+    def harvest(self):
+        if self.harvested:
+            farm_inv["crops"][self.crop_type] += 1
+            self.reset()
+
+    def reset(self):
+        self.growth_stage = 0
+        self.harvested = False
 
 
     
