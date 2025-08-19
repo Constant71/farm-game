@@ -39,7 +39,14 @@ crops = {
     "pumpkin": 0
          }
 
-
+plots = {
+    plot1: "none",
+    plot2: "none",
+    plot3: "none",
+    plot4: "none",
+    plot5: "none",
+    plot6: "none"
+}
 
 
     
