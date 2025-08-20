@@ -1,6 +1,10 @@
 # --- Farm Sim with per-crop growth times, shop, seeds, and selling ---
 
 gold = 20
+total_plots = 5  # starting number of available plots
+plot_purchase_count = 0  # number of extra plots bought
+base_plot_cost = 10  # initial cost for buying an extra plot
+plot_cost_increase = 5  # cost increase per purchased plot
 
 # Crop data: seed cost, sell value, and growth time
 crop_data = {
@@ -28,6 +32,7 @@ farm_inv = {
     "crops": {crop: 0 for crop in crop_data}
 }
 farm_inv["seeds"]["pepper"] = 3  # starting with 3 pepper seeds
+farm_inv["seeds"]["pepper"] = 3  # starting seeds
 
 VALID_CROPS = set(crop_data.keys())
 MAX_PLOTS_PER_CROP = 5
@@ -56,9 +61,14 @@ class Plot:
 active_plots = []
 
 def plant_crop(crop_type: str):
+    global total_plots
     crop_type = crop_type.lower()
     if crop_type not in VALID_CROPS:
         print(f"'{crop_type}' is not valid.")
+        return
+
+    if len(active_plots) >= total_plots:
+        print(f"All plots are occupied! You have {total_plots} plots.")
         return
 
     if farm_inv["seeds"][crop_type] <= 0:
@@ -100,13 +110,15 @@ def harvest_all_ready():
     print(f"Harvested {harvested} crops." if harvested else "No crops ready.")
 
 def shop_menu():
-    print("\n=== Seed Shop ===")
+    global gold, plot_purchase_count, base_plot_cost
+    print("\n=== Farm Shop ===")
     print(f"Gold: {gold}")
+    print("Seed Shop:")
     print(f"{'Crop':12} {'Seed Cost':10} {'Sell Price':10} {'Growth Time':12}")
-    print("-"*50)
     for crop, data in crop_data.items():
         print(f"{crop.capitalize():12} {data['seed_cost']:10} {data['sell_price']:10} {data['grow_time']:12}")
-    print("-"*50)
+    next_plot_cost = base_plot_cost + plot_purchase_count * plot_cost_increase
+    print(f"\nPlot Shop: Buy additional plot (current total plots: {total_plots}) for {next_plot_cost} gold.")
 
 def buy_seeds(crop_type: str, qty: int):
     global gold
@@ -121,6 +133,17 @@ def buy_seeds(crop_type: str, qty: int):
     gold -= cost
     farm_inv["seeds"][crop_type] += qty
     print(f"Bought {qty} {crop_type} seeds for {cost} gold. Gold left: {gold}")
+
+def buy_plot():
+    global gold, total_plots, plot_purchase_count
+    cost = base_plot_cost + plot_purchase_count * plot_cost_increase
+    if gold < cost:
+        print(f"Not enough gold to buy a new plot. Cost: {cost}, you have: {gold}")
+        return
+    gold -= cost
+    total_plots += 1
+    plot_purchase_count += 1
+    print(f"Bought a new plot! Total plots: {total_plots}. Gold left: {gold}")
 
 def sell_crops(crop_type: str, qty: int):
     global gold
@@ -147,6 +170,7 @@ def display_inventory():
         if count > 0:
             print(f"{crop.capitalize():12}: {count}")
     print(f"Gold: {gold}")
+    print(f"Available Plots: {total_plots} (Occupied: {len(active_plots)})")
 
 def display_plots():
     print("\n=== Active Plots ===")
@@ -166,7 +190,7 @@ def main():
         print("4. Harvest ALL")
         print("5. Show Plots")
         print("6. Display Inventory")
-        print("7. Shop (Buy Seeds)")
+        print("7. Shop (Buy Seeds / Plots)")
         print("8. Sell Crops")
         print("9. Exit")
 
@@ -189,9 +213,13 @@ def main():
             display_inventory()
         elif choice == '7':
             shop_menu()
-            crop = input("Which crop seed to buy? ").strip().lower()
-            qty = int(input("How many? "))
-            buy_seeds(crop, qty)
+            shop_choice = input("Buy Seeds (S) or Plot (P)? ").strip().upper()
+            if shop_choice == 'S':
+                crop = input("Which crop seed to buy? ").strip().lower()
+                qty = int(input("How many? "))
+                buy_seeds(crop, qty)
+            elif shop_choice == 'P':
+                buy_plot()
         elif choice == '8':
             crop = input("Which crop to sell? ").strip().lower()
             qty = int(input("How many? "))
