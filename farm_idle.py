@@ -29,6 +29,7 @@ crop_data = {
 
 # Inventory: starting seeds & harvested crops
 farm_inv = {
+ testing-def-classes
     "seeds": {crop: 0 for crop in crop_data},
     "crops": {crop: 0 for crop in crop_data}
 }
