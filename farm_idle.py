@@ -1,135 +1,151 @@
-# --- Simple Farm Sim (persistent plots + proper growth/harvest) ---
+# --- Farm Sim with per-crop growth times, shop, seeds, and selling ---
 
 gold = 20
 
+# Crop data: seed cost, sell value, and growth time
+crop_data = {
+    "pepper":     {"seed_cost": 2, "sell_price": 5, "grow_time": 5},
+    "carrot":     {"seed_cost": 1, "sell_price": 3, "grow_time": 3},
+    "pea":        {"seed_cost": 2, "sell_price": 4, "grow_time": 4},
+    "cucumber":   {"seed_cost": 3, "sell_price": 6, "grow_time": 5},
+    "eggplant":   {"seed_cost": 3, "sell_price": 6, "grow_time": 6},
+    "radish":     {"seed_cost": 1, "sell_price": 3, "grow_time": 3},
+    "onion":      {"seed_cost": 2, "sell_price": 4, "grow_time": 4},
+    "hops":       {"seed_cost": 3, "sell_price": 7, "grow_time": 6},
+    "potato":     {"seed_cost": 2, "sell_price": 5, "grow_time": 5},
+    "tomato":     {"seed_cost": 3, "sell_price": 6, "grow_time": 6},
+    "leek":       {"seed_cost": 2, "sell_price": 4, "grow_time": 4},
+    "watermelon": {"seed_cost": 5, "sell_price": 10, "grow_time": 8},
+    "corn":       {"seed_cost": 4, "sell_price": 8, "grow_time": 7},
+    "cabbage":    {"seed_cost": 3, "sell_price": 7, "grow_time": 5},
+    "pine":       {"seed_cost": 6, "sell_price": 12, "grow_time": 10},
+    "pumpkin":    {"seed_cost": 5, "sell_price": 11, "grow_time": 9},
+}
+
+# Inventory: starting seeds & harvested crops
 farm_inv = {
-    "crops": {
-        "pepper": 3,
-        "carrot": 0,
-        "pea": 0,
-        "cucumber": 0,
-        "eggplant": 0,
-        "radish": 0,
-        "onion": 0,
-        "hops": 0,
-        "potato": 0,
-        "tomato": 0,
-        "leek": 0,
-        "watermelon": 0,
-        "corn": 0,
-        "cabbage": 0,
-        "pine": 0,
-        "pumpkin": 0
-    }
+    "seeds": {crop: 0 for crop in crop_data},
+    "crops": {crop: 0 for crop in crop_data}
 }
+farm_inv["seeds"]["pepper"] = 3  # starting with 3 pepper seeds
 
-# Active plots per crop type (how many are planted & growing)
-crops = {
-    "pepper": 0,
-    "carrot": 0,
-    "pea": 0,
-    "cucumber": 0,
-    "eggplant": 0,
-    "radish": 0,
-    "onion": 0,
-    "hops": 0,
-    "potato": 0,
-    "tomato": 0,
-    "leek": 0,
-    "watermelon": 0,
-    "corn": 0,
-    "cabbage": 0,
-    "pine": 0,
-    "pumpkin": 0
-}
-
-VALID_CROPS = set(crops.keys())
+VALID_CROPS = set(crop_data.keys())
 MAX_PLOTS_PER_CROP = 5
-MATURITY_STAGE = 5  # number of growth ticks to be harvestable
 
 class Plot:
     def __init__(self, crop_type: str):
         self.crop_type = crop_type
-        self.growth_stage = 0  # 0..MATURITY_STAGE
+        self.growth_stage = 0
         self.ready = False
+        self.required_growth = crop_data[crop_type]["grow_time"]
 
     def grow(self):
         if not self.ready:
             self.growth_stage += 1
-            if self.growth_stage >= MATURITY_STAGE:
-                self.growth_stage = MATURITY_STAGE
+            if self.growth_stage >= self.required_growth:
+                self.growth_stage = self.required_growth
                 self.ready = True
 
     def harvest(self):
-        """Return True if harvested (i.e., was ready), False otherwise."""
         if self.ready:
             farm_inv["crops"][self.crop_type] += 1
             return True
         return False
 
-# persistent list of all plots currently planted
+# persistent plots
 active_plots = []
 
 def plant_crop(crop_type: str):
     crop_type = crop_type.lower()
     if crop_type not in VALID_CROPS:
-        print(f"'{crop_type}' is not a valid crop type.")
+        print(f"'{crop_type}' is not valid.")
         return
 
-    if crops[crop_type] >= MAX_PLOTS_PER_CROP:
-        print(f"Cannot plant more {crop_type}. Max of {MAX_PLOTS_PER_CROP} plots reached.")
+    if farm_inv["seeds"][crop_type] <= 0:
+        print(f"No {crop_type} seeds left. Buy some first.")
         return
 
-    # Create and track the new plot
+    planted_count = sum(1 for p in active_plots if p.crop_type == crop_type)
+    if planted_count >= MAX_PLOTS_PER_CROP:
+        print(f"Cannot plant more {crop_type}. Max {MAX_PLOTS_PER_CROP} plots.")
+        return
+
+    farm_inv["seeds"][crop_type] -= 1
     active_plots.append(Plot(crop_type))
-    crops[crop_type] += 1
-    print(f"Planted {crop_type}. Active {crop_type} plots: {crops[crop_type]}")
+    print(f"Planted {crop_type}. Seeds left: {farm_inv['seeds'][crop_type]}")
 
 def grow_all(days: int = 1):
-    if days < 1:
-        print("You must grow at least 1 day.")
-        return
     for _ in range(days):
         for plot in active_plots:
             plot.grow()
-    print(f"Time passed: {days} day(s). Crops progressed.")
+    print(f"Time passed: {days} day(s).")
 
 def harvest_crop(crop_type: str):
     crop_type = crop_type.lower()
-    if crop_type not in VALID_CROPS:
-        print(f"'{crop_type}' is not a valid crop type.")
-        return
-
-    # Find the first ready plot of this crop
     for i, plot in enumerate(active_plots):
         if plot.crop_type == crop_type and plot.ready:
-            if plot.harvest():
-                # Remove the plot from active plots; reduce active count
-                del active_plots[i]
-                crops[crop_type] -= 1
-                print(f"Harvested 1 {crop_type}. Inventory now: {farm_inv['crops'][crop_type]}")
-                return
+            plot.harvest()
+            del active_plots[i]
+            print(f"Harvested 1 {crop_type}. Stored: {farm_inv['crops'][crop_type]}")
+            return
     print(f"No ready {crop_type} to harvest.")
 
 def harvest_all_ready():
-    """Harvest all plots that are ready, across all crop types."""
     harvested = 0
-    # Iterate backwards so we can safely delete
     for i in range(len(active_plots) - 1, -1, -1):
-        plot = active_plots[i]
-        if plot.ready and plot.harvest():
-            crops[plot.crop_type] -= 1
+        if active_plots[i].ready:
+            active_plots[i].harvest()
             del active_plots[i]
             harvested += 1
-    if harvested:
-        print(f"Harvested {harvested} crop(s) total.")
-    else:
-        print("No crops are ready to harvest.")
+    print(f"Harvested {harvested} crops." if harvested else "No crops ready.")
+
+def shop_menu():
+    print("\n=== Seed Shop ===")
+    print(f"Gold: {gold}")
+    print(f"{'Crop':12} {'Seed Cost':10} {'Sell Price':10} {'Growth Time':12}")
+    print("-"*50)
+    for crop, data in crop_data.items():
+        print(f"{crop.capitalize():12} {data['seed_cost']:10} {data['sell_price']:10} {data['grow_time']:12}")
+    print("-"*50)
+
+def buy_seeds(crop_type: str, qty: int):
+    global gold
+    crop_type = crop_type.lower()
+    if crop_type not in VALID_CROPS:
+        print(f"'{crop_type}' is not valid.")
+        return
+    cost = crop_data[crop_type]["seed_cost"] * qty
+    if gold < cost:
+        print(f"Not enough gold. Need {cost}, you have {gold}.")
+        return
+    gold -= cost
+    farm_inv["seeds"][crop_type] += qty
+    print(f"Bought {qty} {crop_type} seeds for {cost} gold. Gold left: {gold}")
+
+def sell_crops(crop_type: str, qty: int):
+    global gold
+    crop_type = crop_type.lower()
+    if crop_type not in VALID_CROPS:
+        print(f"'{crop_type}' is not valid.")
+        return
+    if farm_inv["crops"][crop_type] < qty:
+        print(f"Not enough {crop_type} to sell.")
+        return
+    revenue = crop_data[crop_type]["sell_price"] * qty
+    farm_inv["crops"][crop_type] -= qty
+    gold += revenue
+    print(f"Sold {qty} {crop_type} for {revenue} gold. Gold now: {gold}")
 
 def display_inventory():
-    print("\n=== Farm Inventory ===")
+    print("\n=== Inventory ===")
+    print("-- Seeds --")
+    for crop, count in farm_inv["seeds"].items():
+        if count > 0:
+            print(f"{crop.capitalize():12}: {count}")
+    print("-- Crops --")
     for crop, count in farm_inv["crops"].items():
-        print(f"{crop.capitalize():12}: {count}")
+        if count > 0:
+            print(f"{crop.capitalize():12}: {count}")
     print(f"Gold: {gold}")
 
 def display_plots():
@@ -137,57 +153,54 @@ def display_plots():
     if not active_plots:
         print("No plots planted.")
         return
-    # Summarize per plot
     for idx, plot in enumerate(active_plots, start=1):
-        status = "READY" if plot.ready else f"Stage {plot.growth_stage}/{MATURITY_STAGE}"
+        status = "READY" if plot.ready else f"Stage {plot.growth_stage}/{plot.required_growth}"
         print(f"{idx:2}. {plot.crop_type.capitalize():12} - {status}")
-    # Also show counts per type
-    print("\nActive plots per crop type:")
-    for crop, count in crops.items():
-        if count > 0:
-            print(f"  {crop.capitalize():12}: {count}")
 
 def main():
     while True:
         print("\nFarm Management System")
         print("1. Plant Crop")
-        print("2. Wait a Day (Grow)")
+        print("2. Wait a Day")
         print("3. Harvest Crop")
-        print("4. Harvest ALL Ready")
-        print("5. Show Active Plots")
+        print("4. Harvest ALL")
+        print("5. Show Plots")
         print("6. Display Inventory")
-        print("7. Exit")
+        print("7. Shop (Buy Seeds)")
+        print("8. Sell Crops")
+        print("9. Exit")
 
-        choice = input("Choose an option: ").strip()
+        choice = input("Choose: ").strip()
 
         if choice == '1':
-            crop_type = input("Enter crop type to plant: ").strip().lower()
-            plant_crop(crop_type)
-
+            crop = input("Which crop to plant? ").strip().lower()
+            plant_crop(crop)
         elif choice == '2':
-            days_in = input("How many day(s) to wait? [default 1]: ").strip()
-            days = 1 if days_in == "" else max(1, int(days_in))
-            grow_all(days)
-
+            days = input("Days to wait [1]: ").strip()
+            grow_all(int(days) if days else 1)
         elif choice == '3':
-            crop_type = input("Enter crop type to harvest: ").strip().lower()
-            harvest_crop(crop_type)
-
+            crop = input("Which crop to harvest? ").strip().lower()
+            harvest_crop(crop)
         elif choice == '4':
             harvest_all_ready()
-
         elif choice == '5':
             display_plots()
-
         elif choice == '6':
             display_inventory()
-
         elif choice == '7':
-            print("Exiting the farm management system.")
+            shop_menu()
+            crop = input("Which crop seed to buy? ").strip().lower()
+            qty = int(input("How many? "))
+            buy_seeds(crop, qty)
+        elif choice == '8':
+            crop = input("Which crop to sell? ").strip().lower()
+            qty = int(input("How many? "))
+            sell_crops(crop, qty)
+        elif choice == '9':
+            print("Exiting farm sim.")
             break
-
         else:
-            print("Invalid choice. Please try again.")
+            print("Invalid choice.")
 
 if __name__ == "__main__":
     main()
