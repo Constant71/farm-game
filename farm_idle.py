@@ -1,4 +1,5 @@
 # --- Farm Sim with per-crop growth times, shop, seeds, and selling ---
+# --- Farm Sim with limited plots and plot shop ---
 
 gold = 20
 total_plots = 5  # starting number of available plots
