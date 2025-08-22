@@ -1,4 +1,3 @@
-# --- Farm Sim with per-crop growth times, shop, seeds, and selling ---
 # --- Farm Sim with limited plots and plot shop ---
 
 gold = 20
@@ -33,7 +32,6 @@ farm_inv = {
     "seeds": {crop: 0 for crop in crop_data},
     "crops": {crop: 0 for crop in crop_data}
 }
-farm_inv["seeds"]["pepper"] = 3  # starting with 3 pepper seeds
 farm_inv["seeds"]["pepper"] = 3  # starting seeds
 
 VALID_CROPS = set(crop_data.keys())
